@@ -5,31 +5,102 @@ using UnityEngine;
 
 public class ChunkGenerator : MonoBehaviour
 {
-    public static List<GameObject> validChunks(GameObject[] objects, int player_x, int player_y, int r, out List<Tuple<int,int>> missing_positions)
+    public const int CHUNK_SIZE = 11;
+
+    public ChunkNoiseGenerator noiseGenerator;
+    public GameObject chunk;
+
+    // Start is called before the first frame update
+    void Start()
     {
-        List<GameObject> valid = new List<GameObject>();
-        List<Tuple<int, int>> pairs = new List<Tuple<int, int>>();
+        System.Random random = new System.Random(1234);
+        chunk.SetActive(false);
 
-        for(int i = -r; i <= r; i++)
-            for(int j = -r; j <= r; j++)
-                pairs.Add(Tuple.Create(i, j));
+        float[,] initArea = noiseGenerator.GetNoiseMap(3*CHUNK_SIZE, random);
 
-        foreach(GameObject obj in objects)
+        //PrintMap(initArea, 3 * CHUNK_SIZE);
+        /*
+        float[,] chunkMapt = new float[CHUNK_SIZE, CHUNK_SIZE];
+        for(int yt = 0; yt < CHUNK_SIZE; yt++)
+            for(int xt = 0; xt < CHUNK_SIZE; xt++)
+                chunkMapt[xt,yt] = initArea[xt*3, yt*3];
+
+        GeneratePlane(0,0,chunkMapt);
+        
+        return;
+        */
+        
+        for (int y = 0; y < 3; y++)
         {
-            int chunk_x = (int) (obj.transform.position.x/10);
-            int chunk_y = (int) (obj.transform.position.y/10);
-
-            foreach(Tuple<int,int> pair in pairs)
+            for (int x = 0; x < 3; x++)
             {
+                float[,] chunkMap = new float[CHUNK_SIZE, CHUNK_SIZE];
 
-                if((player_x + pair.Item1 == chunk_x) && (player_y + pair.Item2 == chunk_y))
+                int baseX = CHUNK_SIZE * x;
+                int baseY = CHUNK_SIZE * y;
+
+                for (int ly = 0; ly < CHUNK_SIZE; ly++)
                 {
-                    valid.Add(obj);
-                    pairs.Remove(pair);
+                    for (int lx = 0; lx < CHUNK_SIZE; lx++)
+                    {
+                        chunkMap[lx, ly] = initArea[baseX + lx, baseY + ly];
+                    }
                 }
+
+                GeneratePlane(3 - 1 - x, 3 - 1 -y, chunkMap);
             }
         }
-        missing_positions = pairs;
-        return valid;
+    }
+
+    public GameObject GeneratePlane(int cx, int cy, float[,] map)
+    {
+        GameObject newChunk = Instantiate(chunk);
+        
+        MeshFilter meshFilter = newChunk.GetComponent<MeshFilter>();
+        MeshCollider meshCollider = newChunk.GetComponent<MeshCollider>();
+        
+        Vector3[] vec = new Vector3[CHUNK_SIZE * CHUNK_SIZE];
+        Vector3[] baseMesh = meshFilter.mesh.vertices;
+        int meshCount = baseMesh.Length;
+        for (int y = 0; y < CHUNK_SIZE; y++)
+        {
+            for (int x = 0; x < CHUNK_SIZE; x++)
+            {
+                int index = (x + (y * CHUNK_SIZE));
+                float yWeight = map[CHUNK_SIZE - x - 1, y];
+                //Debug.Log($"noise: {noise[x,y] * 100}");
+                vec[index] = new Vector3(baseMesh[index].x, 0.5f * Mathf.Floor(map[x,y] * 20), baseMesh[index].z);
+                //vec[index] = new Vector3(baseMesh[index].x, 20 * yWeight, baseMesh[index].z);
+                //vec[index] = new Vector3(baseMesh[index].x, map[x, y] * 20, baseMesh[index].z);
+            }
+        }
+
+        meshFilter.mesh.vertices = vec;
+        meshFilter.sharedMesh.RecalculateBounds();
+        meshFilter.mesh.RecalculateNormals();
+
+        meshCollider.sharedMesh = meshFilter.mesh;
+
+        newChunk.SetActive(true);
+
+        newChunk.transform.position = new Vector3(10*cx,0,10*cy);
+        
+        return newChunk;
+    }
+
+    private void PrintMap(float[,] map, int stride)
+    {
+        string s = "[";
+        for (int y = 0; y < stride; y++)
+        {
+            for (int x = 0; x < stride; x++)
+            {
+                s += $"({map[x,y]}),";
+            }
+
+            s += "]\n[";
+        }
+        
+        Debug.Log(s);
     }
 }
