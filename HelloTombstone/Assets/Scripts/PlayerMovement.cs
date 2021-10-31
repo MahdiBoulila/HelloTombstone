@@ -21,7 +21,7 @@ public class PlayerMovement : MonoBehaviour
     public float gravity = -9.8f;
     private Vector3 movingDirection = Vector3.zero;
     // jumping
-    public float jumpforce = 20f;
+    public float jumpforce = 15f;
     public float jumpSpeed = 2.0f;
     Rigidbody rigidbody;
     void Start()
@@ -39,7 +39,7 @@ public class PlayerMovement : MonoBehaviour
     { 
         UpdateMouseLook();
         UpdateMovement();
-        if (Input.GetKeyDown("Space") && controller.isGrounded)
+        if (Input.GetKeyDown(KeyCode.Space) && controller.isGrounded)
         {
             controller.Move(Vector3.up * jumpforce * jumpSpeed* Time.deltaTime);
         }
